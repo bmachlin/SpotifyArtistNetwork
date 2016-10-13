@@ -1,0 +1,21 @@
+body {background-color: #AAAAAA;}
+
+.navbar-inverse {
+  background-color: #333333;
+  height: 8vh;
+}
+
+.navbar-brand {
+    color: #DE23F7;
+}
+
+#header-title {
+    color: #EEEEEE;
+}
+#title-row {
+    height: 10vh;
+}
+
+#content-row {
+    height: 75vh;
+}

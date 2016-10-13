@@ -1,0 +1,21 @@
+Data Structures
+
+ArtistNode
+	Edge[] related_out
+	Edge[] related_in
+	^in/out degree
+	distance_to_seed
+	name
+	id
+	popularity
+	genres
+	----
+	created features:
+		avg track attributes
+		years active
+
+Edge
+	rank
+	source ArtistNode
+	target ArtistNode
+
