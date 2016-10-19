@@ -19,3 +19,26 @@ Edge
 	source ArtistNode
 	target ArtistNode
 
+
+-input
+	-seed
+	-depth
+	-relnum
+
+ArtistNode:
+	-id
+	-name
+	-popularity
+	-genres
+	-other stuff
+	-relatedList[]
+
+RelatedList
+list of related artists
+index = rank, index 0 = #1 related artist
+value = id
+
+
+1. create seed artist node
+2. call recursive function to set related artists
+3. on each of those related artists do the same
