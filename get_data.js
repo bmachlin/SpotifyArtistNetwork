@@ -4,9 +4,9 @@ var aCount = 0; //length of artistList
 var artistList = {}; //list of saved artist ids and their frequencies
 var relatedList = {}; //list of related artist ids and their frequencies
 var idNames = {}; //index is artist ID, value is artist name as a string
-var GseedArtist = ""; //seed artist to start network from
-var GrelatedNum = 5; //number of related artists per artist to use
-var Gdepth = 10; //number of related artist levels to go from seedArtist
+var seedArtist = ""; //seed artist to start network from
+var relatedNum = 5; //number of related artists per artist to use
+var depth = 10; //number of related artist levels to go from seedArtist
 var foundArtistID = "";
 // var node = {id: "", name: "", genres: null, popularity: 0, followers: 0};
 
@@ -42,10 +42,9 @@ function fetchArtist(artistId, callback) {
     callSpotify(url, {}, callback);
 }
 
-function searchSpotify(query, callback) {
+function searchSpotifyArtist(query, callback) {
     var url = 'https://api.spotify.com/v1/search?query=' + encodeURIComponent(query)
                 + "&offset=0&limit=20&type=artist";
-    console.log(url);
     callSpotify(url, {}, callback);
 }
 
@@ -114,6 +113,7 @@ function buildNetwork(artistList) {
 }   
 
 function createNode(id) {
+    console.log("createnode: " + id);
     var node = {id: id, name: "", related: null, genres: null, popularity: 0, followers: 0};
     fetchArtist(id, function(r) {
         if(r != null) {
@@ -122,19 +122,20 @@ function createNode(id) {
             node.genres = r.genres;
             node.popularity = r.popularity;
             node.followers = r.followers.total;
+            fetchRelatedArtists(id, function(r) {
+                if(r != null) {
+                    node.related = sliceRelated(r.artists, relatedNum);
+                }
+            });
         }
     });
-    fetchRelatedArtists(id, function(r) {
-        if(r != null) {
-            node.related = sliceRelated(r.artists, GrelatedNum);
-        }
-    })
+    
     return node;
 }
 
-function sliceRelated(array, relatedNum) {
+function sliceRelated(array, relNum) {
     new_array = [];
-    for (var i = 0; i < relatedNum; i++) {
+    for (var i = 0; i < relNum && i < array.length; i++) {
         new_array[i] = array[i].id;
     }
     return new_array;
@@ -151,18 +152,18 @@ $(document).ready(
         if(args["seedArtist"] != "") {
             seedArtist = args["seedArtist"];
             if(args["relatedNum"] != "" && args["depth"] != "") {
-                GrelatedNum = args["relatedNum"];
-                Gdepth = args["depth"];
-                if(GrelatedNum > 0 && Gdepth > 0) {
+                relatedNum = args["relatedNum"];
+                depth = args["depth"];
+                if(relatedNum > 0 && depth > 0) {
                     var artistId = getArtistId(seedArtist);
                     if(artistId != "" || artistId == "") {
-                        searchSpotify(seedArtist, function(r) {
+                        searchSpotifyArtist(seedArtist, function(r) {
                             console.log(r);
                             foundArtistID = r.artists.items[0].id;
+                            console.log(foundArtistID);
+                            k = createNode(foundArtistID);
                         });
-                        console.log(foundArtistID)
-                        k = createNode(foundArtistID);
-                        // buildNetwork(artistId, GrelatedNum, dGnepth);
+                        // buildNetwork(artistId, relatedNum, depth);
                     }
                 }
             }
