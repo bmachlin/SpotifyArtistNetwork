@@ -49,14 +49,17 @@
         <div class="container-fluid" id="main-contain">
         <div class="row" id="title-row"></div> <!-- spacing -->
             <div class="row" id="content-row">
-               
-                <form id="seedArtist">
-                    Seed Artist: <input type="text" name="seedArtist"><br>
-                    Related Artists per Artist: <input type="number" name="relatedNum"><br>
-                    Network Depth: <input type="number" name="depth"><br>
-                    <input type="submit" value="Go">
-                </form>
-                
+                <div id="input">
+                    <form id="seedArtist">
+                        Seed Artist: <input type="text" name="seedArtist"><br>
+                        Related Artists per Artist: <input type="number" name="relatedNum"><br>
+                        Network Depth: <input type="number" name="depth"><br>
+                        <input type="submit" value="Go">
+                    </form>
+                </div>
+                <div class="row" id="results">
+                    <h2 id="seedName"></h2>
+                </div>
             </div>
         </div>
         <script src="get_data.js"></script>
