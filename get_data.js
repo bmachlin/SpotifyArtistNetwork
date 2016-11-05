@@ -8,6 +8,7 @@ var k = jQuery.Deferred();
 var node = {};
 var seedArtist = "";
 var callQueue = [];
+var depthList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 // var node = {id: "", name: "", genres: null, popularity: 0, followers: 0};
 
 function error(msg) {
@@ -103,6 +104,8 @@ function buildNetwork(id, relatedNum, depth, level) {
     console.log("buildNetwork: " + id);
     console.log("buildNetworkL: " + level);
 
+    depthList[level] += 1;
+
     fetchArtist(id, function(r) {
         var nD = nodeData(r, id, relatedNum, depth, level);
         nD.done(function() {
@@ -162,6 +165,10 @@ function addArtistToNetwork(node) {
     if(!artistList.hasOwnProperty(node.id)) {
         artistList[node.id] = node.related;
         artistList[node.id].level = node.level;
+        artistList[node.id].name = node.name;
+        artistList[node.id].genres = node.genres;
+        artistList[node.id].popularity = node.popularity;
+        artistList[node.id].followers = node.followers;
     }
 }
 
@@ -171,16 +178,18 @@ function sliceRelated(rArray, relatedNum, level) {
     var limit = (relatedNum < rArray.length) ? relatedNum : rArray.length;
 
     for (var i = 0; i < limit; i++) {
-        new_array[i] = {id: rArray[i].id, rank: i+1, level: level+1};
+        new_array[i] = {id: rArray[i].id, rank: i+1, level: level+1, name: rArray[i].name};
     }
 
     return new_array;
 }
 
 function addToCallQueue(rel) {
-    console.log("addToCallQueue");
+    // console.log("addToCallQueue");
     for(var i = rel.length-1; i >= 0; i--) {
-        callQueue.push(rel[i]);
+        if(!artistList.hasOwnProperty(rel[i].id)) {
+            callQueue.push(rel[i]);
+        }
     }
 }
 
@@ -203,9 +212,6 @@ function beginNetwork(seed, relatedNum, depth) {
         }
     });
 }
-
-/*var n = null;
-            */
 
 $(document).ready(
     function() {
