@@ -1,9 +1,13 @@
 var args = {};
-var artistList = []; //list of saved artist ids and their frequencies
-var seedArtist = ""; //seed artist to start network from
-var relatedNum = 5; //number of related artists per artist to use
-var depth = 10; //number of related artist levels to go from seedArtist
-var foundArtistID = "";
+var artistList = {}; //list of artists and their edges
+var XseedArtist = ""; //seed artist to start network from
+var XrelatedNum = 5; //number of related artists per artist to use
+var Xdepth = 10; //number of related artist levels to go from seedArtist
+var XfoundArtistID = "";
+var k = jQuery.Deferred();
+var node = {};
+var seedArtist = "";
+var callQueue = [];
 // var node = {id: "", name: "", genres: null, popularity: 0, followers: 0};
 
 function error(msg) {
@@ -30,22 +34,22 @@ function parseArgs() {
 
 function fetchRelatedArtists(artistId, callback) {
     var url = 'https://api.spotify.com/v1/artists/' + artistId + '/related-artists';
-    callSpotify(url, {}, callback);
+    return callSpotify(url, {}, callback);
 }
 
 function fetchArtist(artistId, callback) {
     var url = 'https://api.spotify.com/v1/artists/' + artistId;
-    callSpotify(url, {}, callback);
+    return callSpotify(url, {}, callback);
 }
 
 function searchSpotifyArtist(query, callback) {
     var url = 'https://api.spotify.com/v1/search?query=' + encodeURIComponent(query)
                 + "&offset=0&limit=20&type=artist";
-    callSpotify(url, {}, callback);
+    return callSpotify(url, {}, callback);
 }
 
 function callSpotify(url, data, callback) {
-    $.ajax({
+    return $.ajax({
         url: url,
         dataType: 'json',
         data: data,
@@ -61,11 +65,11 @@ function callSpotify(url, data, callback) {
                     retryAfter = 5;
                     console.log("retrying");
                 }
-                setTimeout(callSpotify(url, data, callback), 3600);
+                return setTimeout(callSpotify(url, data, callback), 3600);
             },
             502: function(r) {
                 console.log("five oh two");
-                setTimeout(callSpotify(url, data, callback), 36000);
+                return setTimeout(callSpotify(url, data, callback), 36000);
             }
         }
     });
@@ -82,74 +86,140 @@ function getArtistId(query) {
     });
 }
 
-function getRelatedArtists(id, relNum) {
-    return "";
+function getRelatedArtists(id, relatedNum, level) {
+    console.log("getRelatedArtists");
+    var rel;
+    k = fetchRelatedArtists(id, function(r) {
+        if(r != null) {
+            rel = sliceRelated(r.artists, relatedNum, level + 1);
+        }
+    });
+
+    k.done(function() {return rel;});
 }
 
-function buildNetwork(seed, relNum, d) {
-    
 
+function buildNetwork(id, relatedNum, depth, level) {
+    console.log("buildNetwork: " + id);
+    console.log("buildNetworkL: " + level);
+
+    fetchArtist(id, function(r) {
+        var nD = nodeData(r, id, relatedNum, depth, level);
+        nD.done(function() {
+            console.log(node.name);
+            $("#seedName").text(node.name);
+            if(callQueue.length > 0) {
+                var next = callQueue.shift();
+                buildNetwork(next.id, relatedNum, depth, next.level);
+            }
+        });
+    });
 }   
 
-function createNode(id, level) {
-    console.log("createnode: " + id);
-    
-    node = fetchArtist(id, function(r) {
-        nodeData(r, id, level);
+/*if(node.name != "") {
+            n = node;
+            $("#seedName").text(node.name);
+            displayRelated(n.related);
+        }*/
+
+function createNode(id, relatedNum, level) {
+    console.log("createNode: " + id);
+
+    fetchArtist(id, function(r) {
+        return nodeData(r, id, relatedNum, level);
     });
-    return node;
 }
 
-function nodeData(r, id, level) {
-    var node = {id: id, name: "", related: null, genres: null, popularity: 0, followers: 0, depth: level};
+function nodeData(r, id, relatedNum, depth, level) {
+    // console.log("nodeData: " + id);
+    node = {id: id, name: "", related: null, genres: null, popularity: 0, followers: 0, level: level};
     if(r != null) {
-            console.log(r);
-            node.name = r.name;
-            node.genres = r.genres;
-            node.popularity = r.popularity;
-            node.followers = r.followers.total;
-            node.related = fetchRelatedArtists(id, function(r) {
-                sliceRelated(r, relatedNum, level + 1);
-            });
-        }
+        node.name = r.name;
+        node.genres = r.genres;
+        node.popularity = r.popularity;
+        node.followers = r.followers.total;
+
+        // getRelatedArtists
+        var rel;
+        k = fetchRelatedArtists(id, function(r) {
+            if(r != null) {
+                rel = sliceRelated(r.artists, relatedNum, level);
+            }
+        });
+
+        k.done(function() {
+            node.related = rel;
+            addArtistToNetwork(node);
+            if(node.level < depth)
+                addToCallQueue(rel);
+        });
+        return k;
+    }
 }
 
-function sliceRelated(rArray, relNum, level) {
-    new_array = [];
-    for (var i = 0; i < relNum && i < rArray.artists.length; i++) {
-        new_array[i] = {id: rArray.artist[i].id, level: level};
+function addArtistToNetwork(node) {
+    // console.log("addArtistToNetwork");
+    if(!artistList.hasOwnProperty(node.id)) {
+        artistList[node.id] = node.related;
+        artistList[node.id].level = node.level;
     }
+}
+
+function sliceRelated(rArray, relatedNum, level) {
+    // console.log("sliceRelated");
+    new_array = [];
+    var limit = (relatedNum < rArray.length) ? relatedNum : rArray.length;
+
+    for (var i = 0; i < limit; i++) {
+        new_array[i] = {id: rArray[i].id, rank: i+1, level: level+1};
+    }
+
     return new_array;
 }
 
+function addToCallQueue(rel) {
+    console.log("addToCallQueue");
+    for(var i = rel.length-1; i >= 0; i--) {
+        callQueue.push(rel[i]);
+    }
+}
 
+function displayRelated(related) {
 
+    for(var i = 0; i < related.length; i++) {
+        console.log(related[i]);
+        $("#results").append($("<p></p>").text(related[i]));
+    }
+}
 
+function beginNetwork(seed, relatedNum, depth) {
+    searchSpotifyArtist(seed, function(r) {
+        if(r == null || r.artists.total == 0) {
+            //error
+            alert("no artist found");
+        } else {
+            $("#input").hide();
+            buildNetwork(r.artists.items[0].id, relatedNum, depth, 0);
+        }
+    });
+}
+
+/*var n = null;
+            */
 
 $(document).ready(
     function() {
         args = parseArgs();
         console.log(args);
         if(args["seedArtist"] != "") {
-            seedArtist = args["seedArtist"];
+            var seed = args["seedArtist"];
             if(args["relatedNum"] != "" && args["depth"] != "") {
-                relatedNum = args["relatedNum"];
-                depth = args["depth"];
+                var relatedNum = args["relatedNum"];
+                var depth = args["depth"];
                 if(relatedNum > 0 && depth > 0) {
-                    searchSpotifyArtist(seedArtist, function(r) {
-                        console.log(r);
-                        if(r == null || r.artists.length == 0) {
-                            //error
-                            console.log("no artist found");
-                        } else {
-                            $("#input").hide();
-                            foundArtistID = r.artists.items[0].id;
-                            k = createNode(foundArtistID, 0);
-                            console.log("gfsd" + k.name);
-                            $("#seedName").text(k.name + "yo");
-                        }
-                    });
-                    // buildNetwork(artistId, relatedNum, depth);
+                    if(depth > 50)
+                        depth = 50;
+                    beginNetwork(seed, relatedNum, depth);
                 }
             }
         }

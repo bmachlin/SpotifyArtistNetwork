@@ -7,6 +7,28 @@
 
 */
 
+function authorizeUser(client_id, redirect_uri) {
+
+    var url = 'https://accounts.spotify.com/authorize?client_id=' + client_id +
+        '&response_type=token' +
+        '&scope=user-library-read' +
+        '&redirect_uri=' + encodeURIComponent(redirect_uri);
+    document.location = url;
+}
+
+
+function parseArgs() {
+    var hash = location.hash.replace(/#/g, '');
+    var all = hash.split('&');
+    var args = {};
+    _.each(all, function(keyvalue) {
+        var kv = keyvalue.split('=');
+        var key = kv[0];
+        var val = kv[1];
+        args[key] = val;
+    });
+    return args;
+}
 
 
 function callSpotify(url, data, callback, dataType) {
@@ -29,6 +51,12 @@ function callSpotify(url, data, callback, dataType) {
             }
         }
     });
+}
+
+
+function fetchCurrentUserProfile(callback) {
+    var url = 'https://api.spotify.com/v1/me';
+    callSpotify(url, null, callback);
 }
 
 
@@ -56,29 +84,33 @@ function getArtistId(query) {
         if(r == null || r.artists.length == 0) {
             //error
             console.log("no artist found");
+            return null;
         } else {
             return r.artists.items[0].id;
         }
     });
 }
 
+/*returns track ID for a given query*/
 function getTrackId(query) {
     searchSpotify(query, "track", 1, 0, function(r) {
         if(r == null || r.tracks.length == 0) {
             //error
-            console.log("no artist found");
+            console.log("no track found");
+            return null;
         } else {
             return r.tracks.items[0].id;
         }
     });
 }
 
-
+/*returns album ID for a given query*/
 function getAlbumId(query) {
     searchSpotify(query, "album", 1, 0, function(r) {
         if(r == null || r.albums.length == 0) {
             //error
-            console.log("no artist found");
+            console.log("no album found");
+            return null;
         } else {
             return r.albums.items[0].id;
         }
@@ -90,9 +122,43 @@ function getPlaylistId(query) {
     searchSpotify(query, "playlist", 1, 0, function(r) {
         if(r == null || r.playlists.length == 0) {
             //error
-            console.log("no artist found");
+            console.log("no playlist found");
+            return null;
         } else {
             return r.playlists.items[0].id;
+        }
+    });
+}
+
+function getId(query, type) {
+    searchSpotify(query, type, 1, 0, function(r) {
+        if(r == null) {
+            //error
+            console.log("bad request");
+            return null;
+        } else {
+            if(type === "playlist") {
+                if(r.playlist.length > 0) {
+                    return r.playlists.items[0].id;
+                }
+            }
+            if(type === "album") {
+                if(r.album.length > 0) {
+                    return r.albums.items[0].id;
+                }
+            }
+            if(type === "artist") {
+                if(r.artist.length > 0) {
+                    return r.artists.items[0].id;
+                }
+            }
+            if(type === "track") {
+                if(r.track.length > 0) {
+                     return r.tracks.items[0].id;
+                }
+            }
+            console.log("no" + type + "found");
+            return null;
         }
     });
 }
