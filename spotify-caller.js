@@ -7,169 +7,244 @@
 
 */
 
-function authorizeUser(client_id, redirect_uri) {
+var SCtoken = '';
+
+/*
+function: Authorize user
+parameters: client_id = string, client ID for the Spotify app in use
+redirect_uri = string, pretty self-explanatory
+scopes: array of strings, each string being a correctly dashed scope.
+        e.g. ['user-library-read', 'playlist-modify-public']
+*/
+function authorizeUser(client_id, redirect_uri, scopes) {
+    var scopeString = scopes[0];
+    for(var i = 1; i < scopes.length; i++) {
+        scopeString = '%20' + scopes[i];
+    }
 
     var url = 'https://accounts.spotify.com/authorize?client_id=' + client_id +
         '&response_type=token' +
-        '&scope=user-library-read' +
+        '&scope=' + scopeString +
         '&redirect_uri=' + encodeURIComponent(redirect_uri);
+    console.log(url);
     document.location = url;
 }
 
-
-function parseArgs() {
-    var hash = location.hash.replace(/#/g, '');
-    var all = hash.split('&');
-    var args = {};
-    _.each(all, function(keyvalue) {
-        var kv = keyvalue.split('=');
-        var key = kv[0];
-        var val = kv[1];
-        args[key] = val;
-    });
-    return args;
+function setAccessToken(token) {
+    SCtoken = token;
 }
 
 
 function callSpotify(url, data, callback, dataType) {
-    $.ajax({
-        url: url,
-        dataType: dataType,
-        data: data,
-        success: function(r) {
-            callback(r);
-        },
-        statusCode: {
-            429: function(r) {
-                var retryAfter = r.getResponseHeader('Retry-After');
-                retryAfter = parseInt(retryAfter, 10);
-                console.log("TMR, Retry-After: " + retryAfter);
-                if(!retryAfter) { 
-                    retryAfter = 5;
+    if (SCtoken === '') {
+        return $.ajax({
+            url: url,
+            dataType: dataType,
+            data: data,
+            success: function(r) {
+                callback(r);
+            },
+            statusCode: {
+                429: function(r) {
+                    var retryAfter = r.getResponseHeader('Retry-After');
+                    retryAfter = parseInt(retryAfter, 10);
+                    console.log('TMR, Retry-After: ' + retryAfter);
+                    if(!retryAfter) { 
+                        retryAfter = 5;
+                    }
+                    setTimeout(callSpotify(url, data, callback), 3600);
+                },
+                401: function(r) {
+                    console.log(r);
                 }
-                setTimeout(callSpotify(url, data, callback), 3600);
             }
-        }
-    });
+        });
+    } else {
+        return $.ajax({
+            url: url,
+            dataType: dataType,
+            data: data,
+            headers: {
+                'Authorization': 'Bearer ' + SCtoken
+            },
+            success: function(r) {
+                callback(r);
+            },
+            statusCode: {
+                429: function(r) {
+                    var retryAfter = r.getResponseHeader('Retry-After');
+                    retryAfter = parseInt(retryAfter, 10);
+                    console.log('TMR, Retry-After: ' + retryAfter);
+                    if(!retryAfter) { 
+                        retryAfter = 5;
+                    }
+                    setTimeout(callSpotify(url, data, callback), 3600);
+                },
+                401: function(r) {
+                    console.log(r);
+                }
+            }
+        });
+    }
 }
 
 
 function fetchCurrentUserProfile(callback) {
     var url = 'https://api.spotify.com/v1/me';
-    callSpotify(url, null, callback);
+    return callSpotify(url, null, callback);
 }
 
+function fetchCurrentUserPlaylists(callback) {
+    var url = 'https://api.spotify.com/v1/me/playlists';
+    return callSpotify(url, null, callback);
+}
+
+function fetchCurrentUserPlaylists(limit, offset, callback) {
+    var url = 'https://api.spotify.com/v1/me/playlists' +
+        '&limit=' + limit + '&offset=' + offset;
+    return callSpotify(url, null, callback);
+}
+
+function fetchSavedTracks(callback) {
+    var url = 'https://api.spotify.com/v1/me/tracks';
+    return callSpotify(url, {}, callback);
+}
 
 function fetchRelatedArtists(artistId, callback) {
     var url = 'https://api.spotify.com/v1/artists/' + artistId + '/related-artists';
-    callSpotify(url, {}, callback);
+    return callSpotify(url, {}, callback);
 }
 
 
 function fetchArtist(artistId, callback) {
     var url = 'https://api.spotify.com/v1/artists/' + artistId;
-    callSpotify(url, {}, callback);
+    return callSpotify(url, {}, callback);
 }
 
 
-function searchSpotify(query, type, limit, offset, callback) {
+function fetchTopArtists(callback) {
+    var url = 'https://api.spotify.com/v1/me/top/artists';
+    return callSpotify(url, {}, callback);
+}
+
+function fetchTopTracks(callback) {
+    var url = 'https://api.spotify.com/v1/me/top/tracks';
+    return callSpotify(url, {}, callback);
+}
+
+
+function fetchTopArtists(limit, time_range, callback) {
+    var url = 'https://api.spotify.com/v1/me/top/artists' +
+    '?time_range=' + time_range + '&limit=' + limit;
+    return callSpotify(url, {}, callback);
+}
+
+
+function fetchTopTracks(limit, time_range, callback) {
+    var url = 'https://api.spotify.com/v1/me/top/tracks' +
+    '?time_range=' + time_range + '&limit=' + limit;
+    return callSpotify(url, {}, callback);
+}
+
+
+function searchSpotify(query, type, callback) {
     var url = 'https://api.spotify.com/v1/search?query=' + encodeURIComponent(query)
-                + "&offset=" + offset + "&limit=" + limit + "&type=" + type;
-    callSpotify(url, {}, callback);
+                + '&type=' + type;
+    return callSpotify(url, {}, callback);
+}
+
+function searchSpotifyOptions(query, type, limit, offset, callback) {
+    var url = 'https://api.spotify.com/v1/search?query=' + encodeURIComponent(query)
+                + '&offset=' + offset + '&limit=' + limit + '&type=' + type;
+    return callSpotify(url, {}, callback);
 }
 
 
-function getArtistId(query) {
-    searchSpotify(query, "artist", 1, 0, function(r) {
+function getArtistId(query, callback) {
+    return searchSpotify(query, 'artist', 1, 0, function(r) {
         if(r == null || r.artists.length == 0) {
             //error
-            console.log("no artist found");
-            return null;
+            console.log('no artist found');
         } else {
-            return r.artists.items[0].id;
+            callback(r.artists.items[0].id);
         }
     });
 }
 
 /*returns track ID for a given query*/
-function getTrackId(query) {
-    searchSpotify(query, "track", 1, 0, function(r) {
+function getTrackId(query, callback) {
+    return searchSpotify(query, 'track', 1, 0, function(r) {
         if(r == null || r.tracks.length == 0) {
             //error
-            console.log("no track found");
-            return null;
+            console.log('no track found');
         } else {
-            return r.tracks.items[0].id;
+            callback(r.tracks.items[0].id);
         }
     });
 }
 
 /*returns album ID for a given query*/
-function getAlbumId(query) {
-    searchSpotify(query, "album", 1, 0, function(r) {
+function getAlbumId(query, callback) {
+    return searchSpotify(query, 'album', 1, 0, function(r) {
         if(r == null || r.albums.length == 0) {
             //error
-            console.log("no album found");
-            return null;
+            console.log('no album found');
         } else {
-            return r.albums.items[0].id;
+             callback(r.albums.items[0].id);
         }
     });
 }
 
 
-function getPlaylistId(query) {
-    searchSpotify(query, "playlist", 1, 0, function(r) {
+function getPlaylistId(query, callback) {
+    return searchSpotify(query, 'playlist', 1, 0, function(r) {
         if(r == null || r.playlists.length == 0) {
             //error
-            console.log("no playlist found");
-            return null;
+            console.log('no playlist found');
         } else {
-            return r.playlists.items[0].id;
+            callback(r.playlists.items[0].id);
         }
     });
 }
 
-function getId(query, type) {
-    searchSpotify(query, type, 1, 0, function(r) {
+function getId(query, type, callback) {
+    return searchSpotify(query, type, 1, 0, function(r) {
         if(r == null) {
             //error
-            console.log("bad request");
-            return null;
+            console.log('bad request');
         } else {
-            if(type === "playlist") {
+            if(type === 'playlist') {
                 if(r.playlist.length > 0) {
-                    return r.playlists.items[0].id;
+                    callback(r.playlists.items[0].id);
                 }
             }
-            if(type === "album") {
+            if(type === 'album') {
                 if(r.album.length > 0) {
-                    return r.albums.items[0].id;
+                    callback(r.albums.items[0].id);
                 }
             }
-            if(type === "artist") {
+            if(type === 'artist') {
                 if(r.artist.length > 0) {
-                    return r.artists.items[0].id;
+                    callback(r.artists.items[0].id);
                 }
             }
-            if(type === "track") {
+            if(type === 'track') {
                 if(r.track.length > 0) {
-                     return r.tracks.items[0].id;
+                     callback(r.tracks.items[0].id);
                 }
             }
-            console.log("no" + type + "found");
-            return null;
+            console.log('no' + type + 'found');
         }
     });
 }
 
-function getRelatedArtists(id, relNum) {
-    fetchRelatedArtists(id, function(r) {
+function getRelatedArtists(id, relNum, callback) {
+    return fetchRelatedArtists(id, function(r) {
         if(r == null || r.artists.length == 0) {
             //error
-            console.log("no related artists found");
+            console.log('no related artists found');
         } else {
-            return r.slice(0, relNum);
+            callback(r.slice(0, relNum));
         }
     });
 }

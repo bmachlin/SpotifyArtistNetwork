@@ -33,49 +33,6 @@ function parseArgs() {
     return args;
 }
 
-function fetchRelatedArtists(artistId, callback) {
-    var url = 'https://api.spotify.com/v1/artists/' + artistId + '/related-artists';
-    return callSpotify(url, {}, callback);
-}
-
-function fetchArtist(artistId, callback) {
-    var url = 'https://api.spotify.com/v1/artists/' + artistId;
-    return callSpotify(url, {}, callback);
-}
-
-function searchSpotifyArtist(query, callback) {
-    var url = 'https://api.spotify.com/v1/search?query=' + encodeURIComponent(query)
-                + "&offset=0&limit=20&type=artist";
-    return callSpotify(url, {}, callback);
-}
-
-function callSpotify(url, data, callback) {
-    return $.ajax({
-        url: url,
-        dataType: 'json',
-        data: data,
-        success: function(r) {
-            callback(r);
-        },
-        statusCode: {
-            429: function(r) {
-                var retryAfter = r.getResponseHeader('Retry-After');
-                retryAfter = parseInt(retryAfter, 10);
-                console.log("TMR, Retry-After: " + retryAfter);
-                if(!retryAfter) { 
-                    retryAfter = 5;
-                    console.log("retrying");
-                }
-                return setTimeout(callSpotify(url, data, callback), 3600);
-            },
-            502: function(r) {
-                console.log("five oh two");
-                return setTimeout(callSpotify(url, data, callback), 36000);
-            }
-        }
-    });
-}
-
 function getArtistId(query) {
     searchSpotify(query, "artist", function(r) {
         if(r == null || r.artists.length == 0) {
@@ -114,6 +71,11 @@ function buildNetwork(id, relatedNum, depth, level) {
             if(callQueue.length > 0) {
                 var next = callQueue.shift();
                 buildNetwork(next.id, relatedNum, depth, next.level);
+                return false;
+            } else {
+                console.log("done");
+                createJSON();
+                return true;
             }
         });
     });
@@ -202,7 +164,7 @@ function displayRelated(related) {
 }
 
 function beginNetwork(seed, relatedNum, depth) {
-    searchSpotifyArtist(seed, function(r) {
+    searchSpotify(seed, 'artist', function(r) {
         if(r == null || r.artists.total == 0) {
             //error
             alert("no artist found");
@@ -212,6 +174,24 @@ function beginNetwork(seed, relatedNum, depth) {
         }
     });
 }
+
+
+function createJSON() {
+    var json = '{\n\"artists\": [ ';
+
+    _.each(artistList, function(artist) {
+        var aString = '{\n';
+
+
+
+
+        aString = aString + '}';
+        json = json + aString;
+    });
+
+    json = json + '}';
+}
+
 
 $(document).ready(
     function() {
