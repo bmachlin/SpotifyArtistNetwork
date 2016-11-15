@@ -33,7 +33,10 @@ function parseArgs() {
     return args;
 }
 
+
+//returns first artist found from searching with *query*
 function getArtistId(query) {
+    // console.log("getArtistID: " + query);
     searchSpotify(query, "artist", function(r) {
         if(r == null || r.artists.length == 0) {
             //error
@@ -44,8 +47,9 @@ function getArtistId(query) {
     });
 }
 
+// returns first *relatedNum* related artists for *id*
 function getRelatedArtists(id, relatedNum, level) {
-    console.log("getRelatedArtists");
+    // console.log("getRelatedArtists");
     var rel;
     k = fetchRelatedArtists(id, function(r) {
         if(r != null) {
@@ -56,7 +60,7 @@ function getRelatedArtists(id, relatedNum, level) {
     k.done(function() {return rel;});
 }
 
-
+// creates a network with the given parameters
 function buildNetwork(id, relatedNum, depth, level) {
     console.log("buildNetwork: " + id);
     console.log("buildNetworkL: " + level);
@@ -81,13 +85,9 @@ function buildNetwork(id, relatedNum, depth, level) {
     });
 }   
 
-/*if(node.name != "") {
-            n = node;
-            $("#seedName").text(node.name);
-            displayRelated(n.related);
-        }*/
-
+// given artist id, relatedNum and current level, creates a new node in the network
 function createNode(id, relatedNum, level) {
+    // console.log("createNode: " + id);
     console.log("createNode: " + id);
 
     fetchArtist(id, function(r) {
@@ -95,9 +95,11 @@ function createNode(id, relatedNum, level) {
     });
 }
 
+// sets data for the node being added
 function nodeData(r, id, relatedNum, depth, level) {
     // console.log("nodeData: " + id);
-    node = {id: id, name: "", related: null, genres: null, popularity: 0, followers: 0, level: level};
+    node = {id: id, name: "", related: null, genres: null, 
+            popularity: 0, followers: 0, level: level};
     if(r != null) {
         node.name = r.name;
         node.genres = r.genres;
@@ -122,6 +124,7 @@ function nodeData(r, id, relatedNum, depth, level) {
     }
 }
 
+// adds completed node to network data structure
 function addArtistToNetwork(node) {
     // console.log("addArtistToNetwork");
     if(!artistList.hasOwnProperty(node.id)) {
@@ -134,6 +137,7 @@ function addArtistToNetwork(node) {
     }
 }
 
+// modifies related artist results to fit network parameters
 function sliceRelated(rArray, relatedNum, level) {
     // console.log("sliceRelated");
     new_array = [];
@@ -146,6 +150,7 @@ function sliceRelated(rArray, relatedNum, level) {
     return new_array;
 }
 
+// keeps track of which nodes to get edges/related artists for
 function addToCallQueue(rel) {
     // console.log("addToCallQueue");
     for(var i = rel.length-1; i >= 0; i--) {
@@ -155,14 +160,17 @@ function addToCallQueue(rel) {
     }
 }
 
-function displayRelated(related) {
 
-    for(var i = 0; i < related.length; i++) {
-        console.log(related[i]);
-        $("#results").append($("<p></p>").text(related[i]));
-    }
-}
+// // (in progress)
+// function displayRelated(related) {
+//     // console.log("displayRelated");
+//     for(var i = 0; i < related.length; i++) {
+//         console.log(related[i]);
+//         $("#results").append($("<p></p>").text(related[i]));
+//     }
+// }
 
+// setting up network data
 function beginNetwork(seed, relatedNum, depth) {
     searchSpotify(seed, 'artist', function(r) {
         if(r == null || r.artists.total == 0) {
@@ -175,7 +183,7 @@ function beginNetwork(seed, relatedNum, depth) {
     });
 }
 
-
+// (in progress) turns netowkr data structure into JSON string
 function createJSON() {
     var json = '{\n\"artists\": [ ';
 
