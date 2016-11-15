@@ -7,36 +7,17 @@
 
 */
 
-var SCtoken = '';
+var AuthToken = ''; //Authorization token
 
 /*
-function: Authorize user
-parameters: client_id = string, client ID for the Spotify app in use
-redirect_uri = string, pretty self-explanatory
-scopes: array of strings, each string being a correctly dashed scope.
-        e.g. ['user-library-read', 'playlist-modify-public']
+function: Queries Spotify API
+parameters: url = url to get from
+data = data to provide to Spotify, usually {}
+callback: callback function
+dataType: optional dataType specification
 */
-function authorizeUser(client_id, redirect_uri, scopes) {
-    var scopeString = scopes[0];
-    for(var i = 1; i < scopes.length; i++) {
-        scopeString = '%20' + scopes[i];
-    }
-
-    var url = 'https://accounts.spotify.com/authorize?client_id=' + client_id +
-        '&response_type=token' +
-        '&scope=' + scopeString +
-        '&redirect_uri=' + encodeURIComponent(redirect_uri);
-    console.log(url);
-    document.location = url;
-}
-
-function setAccessToken(token) {
-    SCtoken = token;
-}
-
-
 function callSpotify(url, data, callback, dataType) {
-    if (SCtoken === '') {
+    if (AuthToken === '') {
         return $.ajax({
             url: url,
             dataType: dataType,
@@ -65,7 +46,7 @@ function callSpotify(url, data, callback, dataType) {
             dataType: dataType,
             data: data,
             headers: {
-                'Authorization': 'Bearer ' + SCtoken
+                'Authorization': 'Bearer ' + AuthToken
             },
             success: function(r) {
                 callback(r);
@@ -88,6 +69,34 @@ function callSpotify(url, data, callback, dataType) {
     }
 }
 
+/*
+function: Authorize user
+parameters: client_id = string, client ID for the Spotify app in use
+redirect_uri = string, pretty self-explanatory
+scopes: array of strings, each string being a correctly dashed scope.
+        e.g. ['user-library-read', 'playlist-modify-public']
+*/
+function authorizeUser(client_id, redirect_uri, scopes) {
+    var scopeString = scopes[0];
+    for(var i = 1; i < scopes.length; i++) {
+        scopeString = '%20' + scopes[i];
+    }
+
+    var url = 'https://accounts.spotify.com/authorize?client_id=' + client_id +
+        '&response_type=token' +
+        '&scope=' + scopeString +
+        '&redirect_uri=' + encodeURIComponent(redirect_uri);
+    console.log(url);
+    document.location = url;
+}
+
+
+function setAccessToken(token) {
+    AuthToken = token;
+}
+
+
+
 
 function fetchCurrentUserProfile(callback) {
     var url = 'https://api.spotify.com/v1/me';
@@ -99,7 +108,7 @@ function fetchCurrentUserPlaylists(callback) {
     return callSpotify(url, null, callback);
 }
 
-function fetchCurrentUserPlaylists(limit, offset, callback) {
+function fetchCurrentUserPlaylistsOptions(limit, offset, callback) {
     var url = 'https://api.spotify.com/v1/me/playlists' +
         '&limit=' + limit + '&offset=' + offset;
     return callSpotify(url, null, callback);
@@ -209,6 +218,37 @@ function getPlaylistId(query, callback) {
 
 function getId(query, type, callback) {
     return searchSpotify(query, type, 1, 0, function(r) {
+        if(r == null) {
+            //error
+            console.log('bad request');
+        } else {
+            if(type === 'playlist') {
+                if(r.playlist.length > 0) {
+                    callback(r.playlists.items[0].id);
+                }
+            }
+            if(type === 'album') {
+                if(r.album.length > 0) {
+                    callback(r.albums.items[0].id);
+                }
+            }
+            if(type === 'artist') {
+                if(r.artist.length > 0) {
+                    callback(r.artists.items[0].id);
+                }
+            }
+            if(type === 'track') {
+                if(r.track.length > 0) {
+                     callback(r.tracks.items[0].id);
+                }
+            }
+            console.log('no' + type + 'found');
+        }
+    });
+}
+
+function getIdOptions(query, type, offset, callback) {
+    return searchSpotify(query, type, 1, offset, function(r) {
         if(r == null) {
             //error
             console.log('bad request');

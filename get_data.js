@@ -1,5 +1,5 @@
 var args = {};
-var artistList = {}; //list of artists and their edges
+var artistNetwork = {}; //list of artists and their edges
 var XseedArtist = ""; //seed artist to start network from
 var XrelatedNum = 5; //number of related artists per artist to use
 var Xdepth = 10; //number of related artist levels to go from seedArtist
@@ -127,13 +127,13 @@ function nodeData(r, id, relatedNum, depth, level) {
 // adds completed node to network data structure
 function addArtistToNetwork(node) {
     // console.log("addArtistToNetwork");
-    if(!artistList.hasOwnProperty(node.id)) {
-        artistList[node.id] = node.related;
-        artistList[node.id].level = node.level;
-        artistList[node.id].name = node.name;
-        artistList[node.id].genres = node.genres;
-        artistList[node.id].popularity = node.popularity;
-        artistList[node.id].followers = node.followers;
+    if(!artistNetwork.hasOwnProperty(node.id)) {
+        artistNetwork[node.id] = node.related;
+        artistNetwork[node.id].level = node.level;
+        artistNetwork[node.id].name = node.name;
+        artistNetwork[node.id].genres = node.genres;
+        artistNetwork[node.id].popularity = node.popularity;
+        artistNetwork[node.id].followers = node.followers;
     }
 }
 
@@ -154,7 +154,7 @@ function sliceRelated(rArray, relatedNum, level) {
 function addToCallQueue(rel) {
     // console.log("addToCallQueue");
     for(var i = rel.length-1; i >= 0; i--) {
-        if(!artistList.hasOwnProperty(rel[i].id)) {
+        if(!artistNetwork.hasOwnProperty(rel[i].id)) {
             callQueue.push(rel[i]);
         }
     }
@@ -187,7 +187,7 @@ function beginNetwork(seed, relatedNum, depth) {
 function createJSON() {
     var json = '{\n\"artists\": [ ';
 
-    _.each(artistList, function(artist) {
+    _.each(artistNetwork, function(artist) {
         var aString = '{\n';
 
 
