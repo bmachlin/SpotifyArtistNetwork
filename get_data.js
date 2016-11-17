@@ -1,5 +1,8 @@
 var args = {};
 var artistNetwork = {}; //list of artists and their edges
+var csvAdjacencyList = "";
+var csvNodeAttrs = "";
+var ANsize = 0;
 var XseedArtist = ""; //seed artist to start network from
 var XrelatedNum = 5; //number of related artists per artist to use
 var Xdepth = 10; //number of related artist levels to go from seedArtist
@@ -62,16 +65,20 @@ function getRelatedArtists(id, relatedNum, level) {
 
 // creates a network with the given parameters
 function buildNetwork(id, relatedNum, depth, level) {
-    console.log("buildNetwork: " + id);
-    console.log("buildNetworkL: " + level);
+    // console.log("buildNetwork: " + id);
+    // console.log("buildNetworkL: " + level);
 
     depthList[level] += 1;
 
     fetchArtist(id, function(r) {
         var nD = nodeData(r, id, relatedNum, depth, level);
         nD.done(function() {
-            console.log(node.name);
-            $("#seedName").text(node.name);
+            // console.log(node.name);
+            var s = "";
+            for(var x = 0; x < level; x++) {
+                s += ".";
+            }
+            $("#seedName").append($("<p></p>").text(s + node.name));
             if(callQueue.length > 0) {
                 var next = callQueue.shift();
                 buildNetwork(next.id, relatedNum, depth, next.level);
@@ -88,7 +95,7 @@ function buildNetwork(id, relatedNum, depth, level) {
 // given artist id, relatedNum and current level, creates a new node in the network
 function createNode(id, relatedNum, level) {
     // console.log("createNode: " + id);
-    console.log("createNode: " + id);
+    // console.log("createNode: " + id);
 
     fetchArtist(id, function(r) {
         return nodeData(r, id, relatedNum, level);
@@ -128,12 +135,29 @@ function nodeData(r, id, relatedNum, depth, level) {
 function addArtistToNetwork(node) {
     // console.log("addArtistToNetwork");
     if(!artistNetwork.hasOwnProperty(node.id)) {
+        ANsize++;
         artistNetwork[node.id] = node.related;
         artistNetwork[node.id].level = node.level;
         artistNetwork[node.id].name = node.name;
         artistNetwork[node.id].genres = node.genres;
         artistNetwork[node.id].popularity = node.popularity;
         artistNetwork[node.id].followers = node.followers;
+
+        //create CSV row
+        var csvAL = node.id;
+        for(var i = 0; i < node.related.length; i++) {
+            csvAL +=  "," + node.related[i].id;
+        }
+        csvAdjacencyList += csvAL + "\n";
+
+        //create CSV note attributes
+        var csvNA = node.id + "," + node.name + "," + node.level + "," + 
+                    node.popularity + "," + node.followers;
+        for(var i = 0; i < node.genres.length; i++) {
+            csvNA +=  "," + node.genres[i];
+        }
+        console.log(csvNA);
+        csvNodeAttrs += csvNA + "\n";
     }
 }
 
@@ -169,6 +193,7 @@ function addToCallQueue(rel) {
 //         $("#results").append($("<p></p>").text(related[i]));
 //     }
 // }
+
 
 // setting up network data
 function beginNetwork(seed, relatedNum, depth) {
