@@ -1,6 +1,6 @@
 var args = {};
 var artistNetwork = {}; //list of artists and their edges
-var csvAdjacencyList = "";
+var csvEdgeList = "";
 var csvNodeAttrs = "";
 var ANsize = 0;
 var XseedArtist = ""; //seed artist to start network from
@@ -11,7 +11,7 @@ var k = jQuery.Deferred();
 var node = {};
 var seedArtist = "";
 var callQueue = [];
-var depthList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+var depthList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 // var node = {id: "", name: "", genres: null, popularity: 0, followers: 0};
 
 function error(msg) {
@@ -68,7 +68,7 @@ function buildNetwork(id, relatedNum, depth, level) {
     // console.log("buildNetwork: " + id);
     // console.log("buildNetworkL: " + level);
 
-    depthList[level] += 1;
+    
 
     fetchArtist(id, function(r) {
         var nD = nodeData(r, id, relatedNum, depth, level);
@@ -85,7 +85,8 @@ function buildNetwork(id, relatedNum, depth, level) {
                 return false;
             } else {
                 console.log("done");
-                createJSON();
+                cleanCSV();
+                connectivity(relatedNum, depth);
                 return true;
             }
         });
@@ -123,18 +124,22 @@ function nodeData(r, id, relatedNum, depth, level) {
 
         k.done(function() {
             node.related = rel;
-            addArtistToNetwork(node);
-            if(node.level < depth)
+            if(node.level < depth) {
                 addToCallQueue(rel);
+                addArtistToNetwork(node, false);
+            } else {
+                addArtistToNetwork(node, true)
+            }
         });
         return k;
     }
 }
 
 // adds completed node to network data structure
-function addArtistToNetwork(node) {
+function addArtistToNetwork(node, edgeOfGraph) {
     // console.log("addArtistToNetwork");
     if(!artistNetwork.hasOwnProperty(node.id)) {
+        depthList[node.level] += 1;
         ANsize++;
         artistNetwork[node.id] = node.related;
         artistNetwork[node.id].level = node.level;
@@ -144,19 +149,24 @@ function addArtistToNetwork(node) {
         artistNetwork[node.id].followers = node.followers;
 
         //create CSV row
-        var csvAL = node.id;
-        for(var i = 0; i < node.related.length; i++) {
-            csvAL +=  "," + node.related[i].id;
+        if(!edgeOfGraph) {
+            for(var i = 0; i < node.related.length; i++) {
+                csvEdgeList +=  node.id + "\t" + node.related[i].id + "\t" + node.related[i].rank + "\n";
+            }   
+        } else {
+            for(var i = 0; i < node.related.length; i++) {
+                if(artistNetwork.hasOwnProperty(node.related[i])) {
+                    csvEdgeList +=  node.id + "\t" + node.related[i].id + "\t" + node.related[i].rank + "\n";
+                }
+            }
         }
-        csvAdjacencyList += csvAL + "\n";
 
         //create CSV note attributes
-        var csvNA = node.id + "," + node.name + "," + node.level + "," + 
-                    node.popularity + "," + node.followers;
-        for(var i = 0; i < node.genres.length; i++) {
-            csvNA +=  "," + node.genres[i];
-        }
-        console.log(csvNA);
+        var csvNA = node.id + "\t" + node.name + "\t" + node.level + "\t" + 
+                    node.popularity + "\t" + node.followers;
+        // for(var i = 0; i < node.genres.length; i++) {
+        //     csvNA +=  "," + node.genres[i];
+        // }
         csvNodeAttrs += csvNA + "\n";
     }
 }
@@ -208,21 +218,24 @@ function beginNetwork(seed, relatedNum, depth) {
     });
 }
 
-// (in progress) turns netowkr data structure into JSON string
-function createJSON() {
-    var json = '{\n\"artists\": [ ';
+function cleanCSV() {
+    csvNodeAttrs = csvNodeAttrs.replace(/[^\w\s.,'&]/g, "");
+}
 
-    _.each(artistNetwork, function(artist) {
-        var aString = '{\n';
+function connectivity(relatedNum, depth) {
+    var maxNodes = 0;
+    for(var k = 0; k <= depth; k++) {
+        maxNodes += Math.pow(relatedNum, k);    
+    }
+    var total = 0;
+    for(var i = 0; i < depthList.length; i++) {
+        total += depthList[i];
+    }
+    console.log(total);
+    console.log(maxNodes);
+    console.log(total/maxNodes);
 
-
-
-
-        aString = aString + '}';
-        json = json + aString;
-    });
-
-    json = json + '}';
+    return total/maxNodes;
 }
 
 
@@ -236,8 +249,8 @@ $(document).ready(
                 var relatedNum = args["relatedNum"];
                 var depth = args["depth"];
                 if(relatedNum > 0 && depth > 0) {
-                    if(depth > 50)
-                        depth = 50;
+                    if(depth > 20)
+                        depth = 20;
                     beginNetwork(seed, relatedNum, depth);
                 }
             }
