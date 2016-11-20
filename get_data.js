@@ -3,11 +3,6 @@ var artistNetwork = {}; //list of artists and their edges
 var csvEdgeList = "";
 var csvNodeAttrs = "";
 var ANsize = 0;
-var XseedArtist = ""; //seed artist to start network from
-var XrelatedNum = 5; //number of related artists per artist to use
-var Xdepth = 10; //number of related artist levels to go from seedArtist
-var XfoundArtistID = "";
-var k = jQuery.Deferred();
 var node = {};
 var seedArtist = "";
 var callQueue = [];
@@ -54,7 +49,7 @@ function getArtistId(query) {
 function getRelatedArtists(id, relatedNum, level) {
     // console.log("getRelatedArtists");
     var rel;
-    k = fetchRelatedArtists(id, function(r) {
+    var k = fetchRelatedArtists(id, function(r) {
         if(r != null) {
             rel = sliceRelated(r.artists, relatedNum, level + 1);
         }
@@ -87,6 +82,7 @@ function buildNetwork(id, relatedNum, depth, level) {
                 console.log("done");
                 cleanCSV();
                 connectivity(relatedNum, depth);
+                writeFiles(relatedNum, depth);
                 return true;
             }
         });
@@ -116,7 +112,7 @@ function nodeData(r, id, relatedNum, depth, level) {
 
         // getRelatedArtists
         var rel;
-        k = fetchRelatedArtists(id, function(r) {
+        var k = fetchRelatedArtists(id, function(r) {
             if(r != null) {
                 rel = sliceRelated(r.artists, relatedNum, level);
             }
@@ -164,9 +160,9 @@ function addArtistToNetwork(node, edgeOfGraph) {
         //create CSV note attributes
         var csvNA = node.id + "\t" + node.name + "\t" + node.level + "\t" + 
                     node.popularity + "\t" + node.followers;
-        // for(var i = 0; i < node.genres.length; i++) {
-        //     csvNA +=  "," + node.genres[i];
-        // }
+        for(var i = 0; i < node.genres.length && i < 5; i++) {
+            csvNA +=  "\t" + node.genres[i];
+        }
         csvNodeAttrs += csvNA + "\n";
     }
 }
@@ -194,16 +190,31 @@ function addToCallQueue(rel) {
     }
 }
 
+function writeFiles(relatedNum, depth) {
+    download(csvEdgeList, "SAN-" + args["seedArtist"] + "-" + relatedNum + 
+                            "-" + depth + "-EL.csv", "text/plain");
+    download(csvNodeAttrs, "SAN-" + args["seedArtist"] + "-" + relatedNum + 
+                            "-" + depth + "-NA.csv", "text/plain");
+}
 
-// // (in progress)
-// function displayRelated(related) {
-//     // console.log("displayRelated");
-//     for(var i = 0; i < related.length; i++) {
-//         console.log(related[i]);
-//         $("#results").append($("<p></p>").text(related[i]));
-//     }
-// }
-
+// Function to download data to a file
+function download(data, filename, type) {
+    var a = document.createElement("a"),
+        file = new Blob([data], {type: type});
+    if (window.navigator.msSaveOrOpenBlob) // IE10+
+        window.navigator.msSaveOrOpenBlob(file, filename);
+    else { // Others
+        var url = URL.createObjectURL(file);
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);  
+        }, 0); 
+    }
+}
 
 // setting up network data
 function beginNetwork(seed, relatedNum, depth) {
@@ -224,8 +235,8 @@ function cleanCSV() {
 
 function connectivity(relatedNum, depth) {
     var maxNodes = 0;
-    for(var k = 0; k <= depth; k++) {
-        maxNodes += Math.pow(relatedNum, k);    
+    for(var j = 0; j <= depth; j++) {
+        maxNodes += Math.pow(relatedNum, j);    
     }
     var total = 0;
     for(var i = 0; i < depthList.length; i++) {
