@@ -1,13 +1,15 @@
-var args = {};
+var args = {}; //arguments found in url
 var artistNetwork = {}; //list of artists and their edges
 var csvEdgeList = "";
 var csvNodeAttrs = "";
-var ANsize = 0;
+var ANsize = 0; //number of nodes
 var node = {};
 var seedArtist = "";
-var callQueue = [];
-var depthList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-// var node = {id: "", name: "", genres: null, popularity: 0, followers: 0};
+var downloadStart = 2147483647;
+var currentLevel = 0;
+var callQueue = []; //queue that keeps track of which ids still need to be added to the network
+var depthList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 function error(msg) {
     info(msg);
@@ -36,7 +38,7 @@ function parseArgs() {
 function getArtistId(query) {
     // console.log("getArtistID: " + query);
     searchSpotify(query, "artist", function(r) {
-        if(r == null || r.artists.length == 0) {
+        if(r === null || r.artists.length === 0) {
             //error
             console.log("no artist found");
         } else {
@@ -62,10 +64,15 @@ function getRelatedArtists(id, relatedNum, level) {
 function buildNetwork(id, relatedNum, depth, level) {
     // console.log("buildNetwork: " + id);
     // console.log("buildNetworkL: " + level);
-
+    if(currentLevel != level) {
+        if(currentLevel >= downloadStart) {
+            writeFiles(relatedNum, level-1);
+        }
+        currentLevel = level;
+    }
     
 
-    fetchArtist(id, function(r) {
+    var d = fetchArtist(id, function(r) {
         var nD = nodeData(r, id, relatedNum, depth, level);
         nD.done(function() {
             // console.log(node.name);
@@ -86,6 +93,9 @@ function buildNetwork(id, relatedNum, depth, level) {
                 return true;
             }
         });
+    });
+    d.fail(function(jqXHR, textStatus, errorThrown ) {
+        buildNetwork(id, relatedNum, depth, level);
     });
 }   
 
@@ -135,8 +145,15 @@ function nodeData(r, id, relatedNum, depth, level) {
 function addArtistToNetwork(node, edgeOfGraph) {
     // console.log("addArtistToNetwork");
     if(!artistNetwork.hasOwnProperty(node.id)) {
+
+        //update counters
         depthList[node.level] += 1;
+        console.log(node.level);
         ANsize++;
+        if(ANsize%100 == 0) console.log(ANsize);
+
+
+        //set node attributes
         artistNetwork[node.id] = node.related;
         artistNetwork[node.id].level = node.level;
         artistNetwork[node.id].name = node.name;
@@ -144,12 +161,13 @@ function addArtistToNetwork(node, edgeOfGraph) {
         artistNetwork[node.id].popularity = node.popularity;
         artistNetwork[node.id].followers = node.followers;
 
-        //create CSV row
+        //create CSV edges
         if(!edgeOfGraph) {
             for(var i = 0; i < node.related.length; i++) {
                 csvEdgeList +=  node.id + "\t" + node.related[i].id + "\t" + node.related[i].rank + "\n";
             }   
         } else {
+            //if node is a leaf, only add edges to nodes that already exist
             for(var i = 0; i < node.related.length; i++) {
                 if(artistNetwork.hasOwnProperty(node.related[i])) {
                     csvEdgeList +=  node.id + "\t" + node.related[i].id + "\t" + node.related[i].rank + "\n";
@@ -219,7 +237,7 @@ function download(data, filename, type) {
 // setting up network data
 function beginNetwork(seed, relatedNum, depth) {
     searchSpotify(seed, 'artist', function(r) {
-        if(r == null || r.artists.total == 0) {
+        if(r === null || r.artists.total === 0) {
             //error
             alert("no artist found");
         } else {
@@ -254,14 +272,17 @@ $(document).ready(
     function() {
         args = parseArgs();
         console.log(args);
+        if(args.hasOwnProperty("download")) {
+            downloadStart = parseInt(args["download"]);
+        }
         if(args["seedArtist"] != "") {
             var seed = args["seedArtist"];
             if(args["relatedNum"] != "" && args["depth"] != "") {
-                var relatedNum = args["relatedNum"];
-                var depth = args["depth"];
+                var relatedNum = parseInt(args["relatedNum"]);
+                var depth = parseInt(args["depth"]);
                 if(relatedNum > 0 && depth > 0) {
-                    if(depth > 20)
-                        depth = 20;
+                    if(depth > 30)
+                        depth = 30;
                     beginNetwork(seed, relatedNum, depth);
                 }
             }

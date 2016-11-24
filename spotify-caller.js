@@ -29,11 +29,11 @@ function callSpotify(url, data, callback, dataType) {
                 429: function(r) {
                     var retryAfter = r.getResponseHeader('Retry-After');
                     retryAfter = parseInt(retryAfter, 10);
-                    console.log('TMR, Retry-After: ' + retryAfter);
+                    console.log('TMR, Retry-After');
                     if(!retryAfter) { 
                         retryAfter = 5;
                     }
-                    setTimeout(callSpotify(url, data, callback), 3600);
+                    // setTimeout(callSpotify(url, data, callback), 3600);
                 },
                 401: function(r) {
                     console.log(r);
@@ -171,7 +171,7 @@ function searchSpotifyOptions(query, type, limit, offset, callback) {
 
 function getArtistId(query, callback) {
     return searchSpotify(query, 'artist', 1, 0, function(r) {
-        if(r == null || r.artists.length == 0) {
+        if(r === null || r.artists.length === 0) {
             //error
             console.log('no artist found');
         } else {
@@ -183,7 +183,7 @@ function getArtistId(query, callback) {
 /*returns track ID for a given query*/
 function getTrackId(query, callback) {
     return searchSpotify(query, 'track', 1, 0, function(r) {
-        if(r == null || r.tracks.length == 0) {
+        if(r === null || r.tracks.length === 0) {
             //error
             console.log('no track found');
         } else {
@@ -195,7 +195,7 @@ function getTrackId(query, callback) {
 /*returns album ID for a given query*/
 function getAlbumId(query, callback) {
     return searchSpotify(query, 'album', 1, 0, function(r) {
-        if(r == null || r.albums.length == 0) {
+        if(r === null || r.albums.length === 0) {
             //error
             console.log('no album found');
         } else {
@@ -207,7 +207,7 @@ function getAlbumId(query, callback) {
 
 function getPlaylistId(query, callback) {
     return searchSpotify(query, 'playlist', 1, 0, function(r) {
-        if(r == null || r.playlists.length == 0) {
+        if(r === null || r.playlists.length === 0) {
             //error
             console.log('no playlist found');
         } else {
@@ -218,7 +218,7 @@ function getPlaylistId(query, callback) {
 
 function getId(query, type, callback) {
     return searchSpotify(query, type, 1, 0, function(r) {
-        if(r == null) {
+        if(r === null) {
             //error
             console.log('bad request');
         } else {
@@ -249,7 +249,7 @@ function getId(query, type, callback) {
 
 function getIdOptions(query, type, offset, callback) {
     return searchSpotify(query, type, 1, offset, function(r) {
-        if(r == null) {
+        if(r === null) {
             //error
             console.log('bad request');
         } else {
@@ -280,7 +280,7 @@ function getIdOptions(query, type, offset, callback) {
 
 function getRelatedArtists(id, relNum, callback) {
     return fetchRelatedArtists(id, function(r) {
-        if(r == null || r.artists.length == 0) {
+        if(r === null || r.artists.length === 0) {
             //error
             console.log('no related artists found');
         } else {
