@@ -1,10 +1,10 @@
 # SpotifyArtistNetwork
 
-Given a seed artist, generates a network of artists based on their related artists.
+Given a seed artist, generates a directed network of artists based on their related artists.
 
 Downloads 2 tab separated CSV files when finished:
 
-1. Edge List where each edge is an artist ID
+1. Edge List where each edge is an artist ID with edge weights (related artist order)
 
 2. Node Attributes: details for each node. Ordering: ID, name, level, popularity, followers, genres x 5
 
