@@ -17,4 +17,6 @@ Downloads 2 tab separated CSV files when finished:
 
 -depth of recursion - i.e. how many relate artists of related artists levels to go
 
--stratified download: if doing a large netowrk, this allows you to download the current data at each level (when it's fully calculated) starting from this parameter.
+-stratified download: if doing a large netowrk, this allows you to download the current data at each level (when it's fully calculated) starting from this parameter.*
+
+*warning: there will be edges that lead to nodes outside of the network at the selected level. e.g. if you start downloading at depth 5 and the program runs until depth 10. Any stratified downloads have to be scrubbed of edges leading to nodes past their depth...
