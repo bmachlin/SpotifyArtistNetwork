@@ -1,12 +1,13 @@
 var args = {}; //arguments found in url
 var artistNetwork = {}; //list of artists and their edges
-var csvEdgeList = "source\ttarget\trank\n";
+var csvEdgeList = "";
 var csvNodeAttrs = "id\tartist\tlevel\tpopularity\tfollowers\t" +
                         "genre1\tgenre2\tgenre3\tgenre4\tgenre5\n";
 var ANsize = 0; //number of nodes
 var node = {};
 var seedArtist = "";
 var downloadStart = 2147483647;
+var processes = 0;
 var currentLevel = 0;
 var callQueue = []; //queue that keeps track of which ids still need to be added to the network
 var errorQueue = [];
@@ -62,10 +63,23 @@ function getRelatedArtists(id, relatedNum, level) {
     k.done(function() {return rel;});
 }
 
+
+
+
+
+
+
+
+
+
+
 // creates a network with the given parameters
 function buildNetwork(id, relatedNum, depth, level) {
+    processes++;
     // console.log("buildNetwork: " + id);
     // console.log("buildNetwork level: " + level);
+
+    //stratified downloading
     if(currentLevel != level) {
         if(currentLevel >= downloadStart) {
             writeFiles(relatedNum, level-1);
@@ -75,18 +89,13 @@ function buildNetwork(id, relatedNum, depth, level) {
     
 
     var d = fetchArtist(id, function(r) {
+
+        //add the current artist to the network
         var nD = nodeData(r, id, relatedNum, depth, level);
         nD.done(function() {
-            // console.log(node.name);
-            var s = "";
-            for(var x = 0; x < level; x++) {
-                s += ".";
-            }
-            $("#seedName").append($("<p></p>").text(s + node.name));
-            // if(errorQueue.length > 0) {
-            //     var next = errorQueue.shift();
-            //     buildNetwork(next.id, relatedNum, depth, next.level);
-            /*}else*/ if(callQueue.length > 0) {
+
+            //if there are more artists to add, get them from the callqueue
+            if(callQueue.length > 0) {
                 var next = callQueue.shift();
                 buildNetwork(next.id, relatedNum, depth, next.level);
                 return false;
@@ -100,29 +109,20 @@ function buildNetwork(id, relatedNum, depth, level) {
         });
     });
 
+    //failure: try again
     d.fail(function(jqXHR, textStatus, errorThrown ) {
-        var e = errorThrown;
-        console.log(e);
-        // errorQueue.push({id: id, level: level});
         buildNetwork(id, relatedNum, depth, level);
-    });
-}   
-
-// given artist id, relatedNum and current level, creates a new node in the network
-function createNode(id, relatedNum, level) {
-    // console.log("createNode: " + id);
-    // console.log("createNode: " + id);
-
-    fetchArtist(id, function(r) {
-        return nodeData(r, id, relatedNum, level);
     });
 }
 
 // sets data for the node being added
 function nodeData(r, id, relatedNum, depth, level) {
+    processes++;
     // console.log("nodeData: " + id);
+
     node = {id: id, name: "", related: null, genres: null, 
             popularity: 0, followers: 0, level: level};
+
     if(r != null) {
         node.name = r.name;
         node.genres = r.genres;
@@ -137,6 +137,7 @@ function nodeData(r, id, relatedNum, depth, level) {
             }
         });
 
+        //success: add related to the callqueue unless artist is at max depth
         k.done(function() {
             node.related = rel;
             if(node.level < depth) {
@@ -146,58 +147,82 @@ function nodeData(r, id, relatedNum, depth, level) {
                 addArtistToNetwork(node, true)
             }
         });
+
+        //failure: try again
         k.fail(function(jq, ts, e) {
-            // errorQueue.push({node});
             buildNetwork(id, relatedNum, depth, level);
         });
         return k;
     }
 }
 
-// adds completed node to network data structure
+
+// adds completed node to network data structure and CSVs
 function addArtistToNetwork(node, edgeOfGraph) {
+    processes++;
     // console.log("addArtistToNetwork");
+
     if(!artistNetwork.hasOwnProperty(node.id)) {
 
-        //update counters
+        //counters and debug
         depthList[node.level] += 1;
         console.log(node.level);
         ANsize++;
         if(ANsize%100 == 0) console.log(ANsize);
         if(ANsize%1000 == 0) $("p").remove();
 
+        addNewArtist(node);
 
-        //set node attributes
-        artistNetwork[node.id] = node.related;
-        artistNetwork[node.id].level = node.level;
-        artistNetwork[node.id].name = node.name;
-        artistNetwork[node.id].genres = node.genres;
-        artistNetwork[node.id].popularity = node.popularity;
-        artistNetwork[node.id].followers = node.followers;
+        addNewArtistEdges(node, edgeOfGraph);
 
-        //create CSV edges
-        if(!edgeOfGraph) {
-            for(var i = 0; i < node.related.length; i++) {
-                csvEdgeList +=  node.id + "\t" + node.related[i].id + "\t" + node.related[i].rank + "\n";
-            }   
-        } else {
-            //if node is a leaf, only add edges to nodes that already exist
-            for(var i = 0; i < node.related.length; i++) {
-                if(artistNetwork.hasOwnProperty(node.related[i])) {
-                    csvEdgeList +=  node.id + "\t" + node.related[i].id + "\t" + node.related[i].rank + "\n";
-                }
-            }
-        }
-
-        //create CSV note attributes
-        var csvNA = node.id + "\t" + node.name + "\t" + node.level + "\t" + 
-                    node.popularity + "\t" + node.followers;
-        for(var i = 0; i < node.genres.length && i < 5; i++) {
-            csvNA +=  "\t" + node.genres[i];
-        }
-        csvNodeAttrs += csvNA + "\n";
+        addNewArtistAttributes(node);
     }
 }
+
+
+function addNewArtist(node) {
+    //add node attributes
+    artistNetwork[node.id] = node.related;
+    artistNetwork[node.id].level = node.level;
+    artistNetwork[node.id].name = node.name;
+    artistNetwork[node.id].genres = node.genres;
+    artistNetwork[node.id].popularity = node.popularity;
+    artistNetwork[node.id].followers = node.followers;
+
+    var s = "";
+    for(var x = 0; x < node.level; x++) {
+        s += ".";
+    }
+    $("#seedName").append($("<p></p>").text(s + node.name));
+}
+
+
+function addNewArtistEdges(node, edgeOfGraph) {
+    //create CSV edges
+    if(!edgeOfGraph) {
+        for(var i = 0; i < node.related.length; i++) {
+            csvEdgeList +=  node.id + "\t" + node.related[i].id + "\t" + node.related[i].rank + "\n";
+        }   
+    } else {
+        //if node is a leaf, only add edges to nodes that already exist
+        for(var i = 0; i < node.related.length; i++) {
+            if(artistNetwork.hasOwnProperty(node.related[i])) {
+                csvEdgeList +=  node.id + "\t" + node.related[i].id + "\t" + node.related[i].rank + "\n";
+            }
+        }
+    }
+}
+
+function addNewArtistAttributes(node) {
+    //create CSV note attributes
+    var csvNA = node.id + "\t" + node.name + "\t" + node.level + "\t" + 
+                node.popularity + "\t" + node.followers;
+    for(var i = 0; i < node.genres.length && i < 5; i++) {
+        csvNA +=  "\t" + node.genres[i];
+    }
+    csvNodeAttrs += csvNA + "\n";
+}
+
 
 // modifies related artist results to fit network parameters
 function sliceRelated(rArray, relatedNum, level) {
@@ -205,8 +230,8 @@ function sliceRelated(rArray, relatedNum, level) {
     new_array = [];
     var limit = (relatedNum < rArray.length) ? relatedNum : rArray.length;
 
-    for (var i = 0; i < limit; i++) {
-        new_array[i] = {id: rArray[i].id, rank: i+1, level: level+1, name: rArray[i].name};
+    for (var i = limit-1; i >= 0; i--) {
+        new_array[i] = {id: rArray[i].id, rank: limit - i, level: level+1, name: rArray[i].name};
     }
 
     return new_array;
@@ -221,6 +246,29 @@ function addToCallQueue(rel) {
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function writeFiles(relatedNum, depth) {
     download(csvEdgeList, "SAN-" + args["seedArtist"] + "-" + relatedNum + 
@@ -252,8 +300,7 @@ function download(data, filename, type) {
 function beginNetwork(seed, relatedNum, depth) {
     searchSpotify(seed, 'artist', function(r) {
         if(r === null || r.artists.total === 0) {
-            //error
-            alert("no artist found");
+            alert("No artist found");
         } else {
             $("#input").hide();
             buildNetwork(r.artists.items[0].id, relatedNum, depth, 0);
@@ -270,12 +317,14 @@ function connectivity(relatedNum, depth) {
     for(var j = 0; j <= depth; j++) {
         maxNodes += Math.pow(relatedNum, j);    
     }
+
     var total = 0;
     for(var i = 0; i < depthList.length; i++) {
         total += depthList[i];
     }
-    console.log(total);
-    console.log(maxNodes);
+
+    console.log("nodes: " + total);
+    console.log("max nodes:" + maxNodes);
     console.log(total/maxNodes);
 
     return total/maxNodes;
