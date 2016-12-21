@@ -5,12 +5,10 @@ var csvNodeAttrs = "id\tartist\tlevel\tpopularity\tfollowers\t" +
                         "genre1\tgenre2\tgenre3\tgenre4\tgenre5\n";
 var ANsize = 0; //number of nodes
 var node = {};
-var seedArtist = "";
 var downloadStart = 2147483647;
 var processes = 0;
 var currentLevel = 0;
 var callQueue = []; //queue that keeps track of which ids still need to be added to the network
-var errorQueue = [];
 var depthList = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
                  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
@@ -73,7 +71,7 @@ function getRelatedArtists(id, relatedNum, level) {
 
 
 
-// creates a network with the given parameters
+// adds to the network with the given parameters
 function buildNetwork(id, relatedNum, depth, level) {
     processes++;
     // console.log("buildNetwork: " + id);
@@ -87,7 +85,7 @@ function buildNetwork(id, relatedNum, depth, level) {
         currentLevel = level;
     }
     
-
+    //get artist data
     var d = fetchArtist(id, function(r) {
 
         //add the current artist to the network
@@ -100,6 +98,7 @@ function buildNetwork(id, relatedNum, depth, level) {
                 buildNetwork(next.id, relatedNum, depth, next.level);
                 return false;
             } else {
+                //finished getting data
                 console.log("done");
                 cleanCSV();
                 connectivity(relatedNum, depth);
@@ -111,6 +110,7 @@ function buildNetwork(id, relatedNum, depth, level) {
 
     //failure: try again
     d.fail(function(jqXHR, textStatus, errorThrown ) {
+        console.log("tmr artist");
         buildNetwork(id, relatedNum, depth, level);
     });
 }
@@ -150,7 +150,7 @@ function nodeData(r, id, relatedNum, depth, level) {
 
         //failure: try again
         k.fail(function(jq, ts, e) {
-            buildNetwork(id, relatedNum, depth, level);
+            // setTimeout(function(){ buildNetwork(id, relatedNum, depth, level); }, 1000);
         });
         return k;
     }
@@ -246,23 +246,6 @@ function addToCallQueue(rel) {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

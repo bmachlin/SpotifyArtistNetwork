@@ -26,14 +26,19 @@ function callSpotify(url, data, callback, dataType) {
                 callback(r);
             },
             statusCode: {
-                429: function(r) {
-                    var retryAfter = r.getResponseHeader('Retry-After');
+                429: function(r, ts, jq) {
+                    console.log(r);
+                    console.log(ts);
+                    console.log(jq);
+                    console.log(r.getAllResponseHeaders());
+                    var retryAfter = r.getAllResponseHeaders();
+                    console.log(retryAfter);
                     retryAfter = parseInt(retryAfter, 10);
                     console.log('TMR, Retry-After');
                     if(!retryAfter) { 
-                        retryAfter = 5;
+                        retryAfter = 3000;
                     }
-                    // setTimeout(callSpotify(url, data, callback), 3600);
+                    // setTimeout(function() { callSpotify(url, data, callback)}, retryAfter);
                 },
                 401: function(r) {
                     console.log(r);
@@ -52,14 +57,14 @@ function callSpotify(url, data, callback, dataType) {
                 callback(r);
             },
             statusCode: {
-                429: function(r) {
+                429: function(r, ts, jq) {
                     var retryAfter = r.getResponseHeader('Retry-After');
                     retryAfter = parseInt(retryAfter, 10);
                     console.log('TMR, Retry-After: ' + retryAfter);
                     if(!retryAfter) { 
-                        retryAfter = 5;
+                        retryAfter = 3000;
                     }
-                    setTimeout(callSpotify(url, data, callback), 3600);
+                    // setTimeout(function() { callSpotify(url, data, callback)}, retryAfter);
                 },
                 401: function(r) {
                     console.log(r);
