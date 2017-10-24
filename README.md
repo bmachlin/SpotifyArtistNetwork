@@ -9,7 +9,7 @@ Downloads 2 tab separated CSV files when finished:
 2. Node Attributes: details for each node. Ordering: ID, name, level, popularity, followers, genres x 5
 
 
-###Parameters:
+### Parameters:
 
 -seed artist
 
